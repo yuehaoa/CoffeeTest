@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app>
+    <servlet>
+     <servlet-name>Coffee.login</servlet-name>
+     <servlet-class>Coffee.login</servlet-class>
+    </servlet>
+     
+    <servlet-mapping>
+        <servlet-name>Coffee.login</servlet-name>
+        <!--浏览器中输入的url，可以随意取名  但是注意加"/" -->
+        <url-pattern>/api/usermanage/login</url-pattern>
+    </servlet-mapping>
+</web-app>
