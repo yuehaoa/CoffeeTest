@@ -6,17 +6,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
+import javax.servlet.ServletInputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -63,50 +60,58 @@ public class login extends HttpServlet {
 			Class.forName("com.mysql.jdbc.Driver");
 			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?useSSL=false&serverTimezone=GMT","coffee","TklRpGi1");
 			Statement stmt = conn.createStatement();
-			String userName = request.getParameter("userName");
-			String password = request.getParameter("password");
-			if(userName==null||password==null) {
-				JSONArray jsonarray = new JSONArray();
-				JSONObject jsonobj = new JSONObject();
-				jsonobj.put("success",false);
-				jsonobj.put("msg","用户名或密码为空");
-				jsonarray.add(jsonobj);
-				out = response.getWriter();
-				out.println(jsonarray);
-				stmt.close();
-				conn.close();
-			}
-			else {
+			ServletInputStream is;
+			try {
+				is = request.getInputStream();
+				int nRead = 1;
+				int nTotalRead = 0;
+				byte[] bytes = new byte[10240];
+				while (nRead > 0) {
+					nRead = is.read(bytes, nTotalRead, bytes.length - nTotalRead);
+					if (nRead > 0)
+						nTotalRead = nTotalRead + nRead;
+				}
+				String str = new String(bytes, 0, nTotalRead, "utf-8");
+				str = str.replace("{", "");
+				str = str.replace("}","");
+				String [] strTemp = str.split(",");
+				Map<String,String>tempMap = new HashMap<String,String>();
+				for(int i=0;i<strTemp.length;i++) {
+					String[] temp3 = strTemp[i].split(":");
+					if(temp3.length<=1) {
+						tempMap.put(temp3[0].replace("\"", ""),null);
+					}
+					else {
+						tempMap.put(temp3[0].replace("\"", ""), temp3[1].replace("\"", ""));
+					}
+				}
+				String userName = tempMap.get("userName");
+				String password = tempMap.get("password");
 				String sql = "select * from user where userName=? and password=?";
 				PreparedStatement ps = conn.prepareStatement(sql);
 				ps.setString(1, userName);
 				ps.setString(2, password);
 				ResultSet rs = ps.executeQuery();
-				JSONArray jsonarray = new JSONArray();
 				JSONObject jsonobj = new JSONObject();
 				if(rs.next()){
 					jsonobj.put("success",true);
 					String token = UUID.randomUUID().toString().replace("-", "");
 					jsonobj.put("token",token);
-					jsonarray.add(jsonobj);
 					Map<String,String> temp = (Map<String,String>)this.getServletContext().getAttribute("userTokenMap");
 					temp.put(rs.getString("userId"), token);
 					this.getServletContext().setAttribute("userTokenMap",temp);
-					for(String key : temp.keySet()){
-					    String value = temp.get(key);
-					    System.out.println(key+":"+value);
-					}
 				}
 				else {
 					jsonobj.put("success",false);
-					jsonobj.put("msg","登录失败");
-					jsonarray.add(jsonobj);
+					jsonobj.put("msg","用户名或密码错误");
 				}
 				out = response.getWriter();
-				out.println(jsonarray);
+				out.println(jsonobj);
 				rs.close();
 				stmt.close();
 				conn.close();
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		} catch (SQLException | ClassNotFoundException e) {
 			e.printStackTrace();

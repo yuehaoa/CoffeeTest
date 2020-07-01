@@ -8,12 +8,15 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import javax.servlet.ServletException;
+import javax.servlet.ServletInputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 /**
  * Servlet implementation class regist
@@ -47,58 +50,64 @@ public class regist extends HttpServlet {
 		PrintWriter out = response.getWriter();
 		Connection conn = null;
 		try {
+			ServletInputStream is = request.getInputStream();
+			int nRead = 1;
+			int nTotalRead = 0;
+			byte[] bytes = new byte[10240];
+			while (nRead > 0) {
+				nRead = is.read(bytes, nTotalRead, bytes.length - nTotalRead);
+				if (nRead > 0)
+					nTotalRead = nTotalRead + nRead;
+			}
+			String str = new String(bytes, 0, nTotalRead, "utf-8");
+			str = str.replace("{", "");
+			str = str.replace("}","");
+			String [] strTemp = str.split(",");
+			Map<String,String>tempMap = new HashMap<String,String>();
+			for(int i=0;i<strTemp.length;i++) {
+				String[] temp3 = strTemp[i].split(":");
+				if(temp3.length<=1) {
+					tempMap.put(temp3[0].replace("\"", ""), null);
+				}
+				else {
+					tempMap.put(temp3[0].replace("\"", ""), temp3[1].replace("\"", ""));
+				}
+			}
 			Class.forName("com.mysql.jdbc.Driver");
 			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?useSSL=false&serverTimezone=GMT","coffee","TklRpGi1");
 			Statement stmt = conn.createStatement();
 			String userId = UUID.randomUUID().toString();
-			String password = request.getParameter("password");
-			String telephone = request.getParameter("telephone");
-			String email = request.getParameter("email");
-			String userName = request.getParameter("userName");
-			if(password==null||userName==null) {
-				JSONArray jsonarray = new JSONArray();
+			String password = tempMap.get("password");
+			String telephone = tempMap.get("telephone");
+			String email = tempMap.get("email");
+			String userName = tempMap.get("userName");
+			String sql = "insert into user(userId,telephone,email,password,userName) values(?,?,?,?,?)";
+			PreparedStatement ps = conn.prepareStatement(sql);
+			ps.setString(1, userId);
+			ps.setString(2, telephone);
+			ps.setString(3, email);
+			ps.setString(4, password);
+			ps.setString(5, userName);
+			try {
+				int rowCount = ps.executeUpdate();
 				JSONObject jsonobj = new JSONObject();
-				jsonobj.put("success",false);
-				jsonobj.put("msg","参数错误,未完整填写参数");
-				jsonarray.add(jsonobj);
+				if(rowCount>0){
+					jsonobj.put("success",true);
+					jsonobj.put("msg","注册成功");
+				}
 				out = response.getWriter();
-				out.println(jsonarray);
+				out.println(jsonobj);
 				stmt.close();
 				conn.close();
 			}
-			else {
-				String sql = "insert into user(userId,telephone,email,password,userName) values(?,?,?,?,?)";
-				PreparedStatement ps = conn.prepareStatement(sql);
-				ps.setString(1, userId);
-				ps.setString(2, telephone);
-				ps.setString(3, email);
-				ps.setString(4, password);
-				ps.setString(5, userName);
-				try {
-					int rowCount = ps.executeUpdate();
-					JSONArray jsonarray = new JSONArray();
-					JSONObject jsonobj = new JSONObject();
-					if(rowCount>0){
-						jsonobj.put("success",true);
-						jsonobj.put("msg","注册成功");
-						jsonarray.add(jsonobj);
-					}
-					out = response.getWriter();
-					out.println(jsonarray);
-					stmt.close();
-					conn.close();
-				}
-				catch(Exception e) {
-					JSONArray jsonarray = new JSONArray();
-					JSONObject jsonobj = new JSONObject();
-					jsonobj.put("success",false);
-					jsonobj.put("msg","操作错误,用户可能已经注册");
-					jsonarray.add(jsonobj);
-					out = response.getWriter();
-					out.println(jsonarray);
-					stmt.close();
-					conn.close();
-				}
+			catch(Exception e) {
+				JSONObject jsonobj = new JSONObject();
+				jsonobj.put("success",false);
+				jsonobj.put("msg","操作错误,用户可能已经注册");
+				out = response.getWriter();
+				out.println(jsonobj);
+				stmt.close();
+				conn.close();
 			}
 		} catch (SQLException | ClassNotFoundException e) {
 			e.printStackTrace();
