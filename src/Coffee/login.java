@@ -72,21 +72,9 @@ public class login extends HttpServlet {
 						nTotalRead = nTotalRead + nRead;
 				}
 				String str = new String(bytes, 0, nTotalRead, "utf-8");
-				str = str.replace("{", "");
-				str = str.replace("}","");
-				String [] strTemp = str.split(",");
-				Map<String,String>tempMap = new HashMap<String,String>();
-				for(int i=0;i<strTemp.length;i++) {
-					String[] temp3 = strTemp[i].split(":");
-					if(temp3.length<=1) {
-						tempMap.put(temp3[0].replace("\"", ""),null);
-					}
-					else {
-						tempMap.put(temp3[0].replace("\"", ""), temp3[1].replace("\"", ""));
-					}
-				}
-				String userName = tempMap.get("userName");
-				String password = tempMap.get("password");
+				JSONObject jsonObj = JSONObject.fromObject(str);
+				String userName = jsonObj.getString("userName");
+				String password = jsonObj.getString("password");
 				String sql = "select * from user where userName=? and password=?";
 				PreparedStatement ps = conn.prepareStatement(sql);
 				ps.setString(1, userName);

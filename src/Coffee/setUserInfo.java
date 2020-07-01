@@ -5,33 +5,35 @@ import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.servlet.ServletException;
 import javax.servlet.ServletInputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 /**
- * Servlet implementation class regist
+ * Servlet implementation class setUserInfo
  */
-@WebServlet("/api/usermanage/regist")
-public class regist extends HttpServlet {
+@WebServlet("/api/usermanage/setUserInfo")
+public class setUserInfo extends HttpServlet {
 	private static final long serialVersionUID = 1L;
        
     /**
      * @see HttpServlet#HttpServlet()
      */
-    public regist() {
+    public setUserInfo() {
         super();
         // TODO Auto-generated constructor stub
-       
     }
 
 	/**
@@ -41,6 +43,7 @@ public class regist extends HttpServlet {
 		// TODO Auto-generated method stub
 		doPost(request,response);
 	}
+
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
@@ -61,43 +64,47 @@ public class regist extends HttpServlet {
 			}
 			String str = new String(bytes, 0, nTotalRead, "utf-8");
 			JSONObject jsonObj = JSONObject.fromObject(str);
-			if(!jsonObj.has("telephone")) {
-				jsonObj.put("telephone", "");
-			}
-			if(!jsonObj.has("email")) {
-				jsonObj.put("email", "");
+			String userId = jsonObj.getString("userId");
+			JSONArray roleArray = jsonObj.getJSONArray("updates");
+			Map<String,String>changeInfo = new HashMap<String,String>();
+			for(int i=0;i<roleArray.size();i++) {
+				JSONObject temp = roleArray.getJSONObject(i);
+				for(Object key:temp.keySet()) {
+					changeInfo.put((String)key, (String)temp.get(key));
+				}
 			}
 			Class.forName("com.mysql.jdbc.Driver");
 			conn = DriverManager.getConnection("jdbc:mysql://106.13.201.225:3306/coffee?useSSL=false&serverTimezone=GMT","coffee","TklRpGi1");
 			Statement stmt = conn.createStatement();
-			String userId = UUID.randomUUID().toString();
-			String password = jsonObj.getString("password");
-			String telephone = jsonObj.getString("telephone");
-			String email = jsonObj.getString("email");
-			String userName = jsonObj.getString("userName");
-			String sql = "insert into user(userId,telephone,email,password,userName) values(?,?,?,?,?)";
-			PreparedStatement ps = conn.prepareStatement(sql);
-			ps.setString(1, userId);
-			ps.setString(2, telephone);
-			ps.setString(3, email);
-			ps.setString(4, password);
-			ps.setString(5, userName);
-			try {
-				int rowCount = ps.executeUpdate();
-				JSONObject jsonobj = new JSONObject();
-				if(rowCount>0){
-					jsonobj.put("success",true);
-					jsonobj.put("msg","注册成功");
+			int error = 0;//判断是否出错
+			if(changeInfo.isEmpty()) error=1;
+			else {				
+				for(String key:changeInfo.keySet()) {
+					String sql = "update user set "+key+" = ? where userId = ?";
+					PreparedStatement ps = conn.prepareStatement(sql);
+					ps.setString(1,changeInfo.get(key));
+					ps.setString(2,userId);
+					try {
+						ps.executeUpdate();
+					}
+					catch(Exception e) {
+						error =1;
+					}
 				}
+			}
+			if(error==1) {
+				JSONObject jsonobj = new JSONObject();
+				jsonobj.put("success",false);
+				jsonobj.put("msg","操作错误,修改字段为空或者名称不正确");
 				out = response.getWriter();
 				out.println(jsonobj);
 				stmt.close();
 				conn.close();
 			}
-			catch(Exception e) {
+			else {
 				JSONObject jsonobj = new JSONObject();
 				jsonobj.put("success",false);
-				jsonobj.put("msg","操作错误,用户可能已经注册");
+				jsonobj.put("msg","修改成功");
 				out = response.getWriter();
 				out.println(jsonobj);
 				stmt.close();

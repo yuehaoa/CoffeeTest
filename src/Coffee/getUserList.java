@@ -57,11 +57,11 @@ public class getUserList extends HttpServlet {
 			JSONArray jsonarray = new JSONArray();
 			JSONObject jsonobj = new JSONObject();
 			while(rs.next()){
-				jsonobj.put("用户名",rs.getString("userName")==null?"":rs.getString("userName"));
-				jsonobj.put("用户Id",rs.getString("userId")==null?"":rs.getString("userId"));
-				jsonobj.put("电话",rs.getString("telephone")==null?"":rs.getString("telephone"));
-				jsonobj.put("邮箱",rs.getString("email")==null?"":rs.getString("email"));
-				jsonobj.put("密码",rs.getString("password")==null?"":rs.getString("password"));
+				jsonobj.put("userName",rs.getString("userName")==null?"":rs.getString("userName"));
+				jsonobj.put("userId",rs.getString("userId")==null?"":rs.getString("userId"));
+				jsonobj.put("telephone",rs.getString("telephone")==null?"":rs.getString("telephone"));
+				jsonobj.put("email",rs.getString("email")==null?"":rs.getString("email"));
+				jsonobj.put("password",rs.getString("password")==null?"":rs.getString("password"));
 				jsonarray.add(jsonobj);
 			}
 			out = response.getWriter();
